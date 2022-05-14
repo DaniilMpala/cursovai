@@ -9,6 +9,8 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
+      - name: Make output folder
+        run: mkdir output
       - name: Clone master branch
         run: git clone https://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@github.com/DaniilMpala/agregator_Backend.git --branch master --single-branch ./output
       # Setup key
