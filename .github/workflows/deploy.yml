@@ -9,6 +9,13 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
+    # Setup key
+      - name: Setup key
+        run: |
+          set -eu
+          mkdir "$HOME/.ssh"
+          echo "${{ secrets.SSH }}" > "$HOME/.ssh/key"
+          chmod 600 "$HOME/.ssh/key"
       - name: Deploy in server
         run: > 
           cd &&
