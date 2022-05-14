@@ -9,7 +9,7 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/master
+      - uses: actions/checkout@master
       # Setup key
       - name: Setup key
         run: |
