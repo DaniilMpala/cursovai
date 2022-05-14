@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Clone master branch
-        run: git clone https://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@github.com/DaniilMpala/agregator_Backend.git --branch master --single-branch /output
+        run: git clone https://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@github.com/DaniilMpala/agregator_Backend.git --branch master --single-branch ./output
       # Setup key
       - name: Setup key
         run: |
@@ -20,7 +20,7 @@ jobs:
           chmod 600 "$HOME/.ssh/key"
       - name: Deploy in server
         run: > 
-          cd /output &&
+          cd  &&
           rsync -e "ssh -i $HOME/.ssh/key -o StrictHostKeyChecking=no" --archive --compress --delete . root@84.252.74.161:/var/www/discountsite &&
           docker stop $(docker ps -a -q) &&
           docker system prune -a -f && 
