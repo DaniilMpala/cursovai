@@ -1,0 +1,21 @@
+name: Deploy
+
+on:
+  push:
+    branches:
+      - "**"
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy in server
+        run: > 
+          cd &&
+          rsync -e "ssh -i $HOME/.ssh/key -o StrictHostKeyChecking=no" --archive --compress --delete . root@84.252.74.161:/var/www/discountsite &&
+          docker stop $(docker ps -a -q) &&
+          docker system prune -a -f && 
+          cd /discountsite &&
+          docker build -t django . &&
+          docker run -d -p 8000:8000 django
+

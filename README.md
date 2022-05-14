@@ -1,3 +1,20 @@
+
+# stop all docker 
+```
+docker stop $(docker ps -a -q)
+docker system prune -a -f
+
+docker build -t django .
+
+docker run -d -p 8000:8000 django
+```
+
+
+
+
+
+
+
 # Discounts Web application
 
 The discount aggregator web site allows customers to choose the product they want for the minimum price at the nearest store.
@@ -66,11 +83,3 @@ And navigate to `http://127.0.0.1:8000/`.
 
 
 
-stop all docker 
-```
-docker stop $(docker ps -a -q)
-
-docker build -t django .
-
-docker run -d -p 8000:8000 django
-```
