@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Clone master branch
-        run: gh repo clone DaniilMpala/agregator_Backend --branch master --single-branch ./output
+        run: git clone git@github.com:DaniilMpala/agregator_Backend.git --branch master --single-branch ./output
       # Setup key
       - name: Setup key
         run: |
