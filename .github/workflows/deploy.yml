@@ -3,13 +3,14 @@ name: Deploy
 on:
   push:
     branches:
-      - "**"
+      - "master"
  
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-    # Setup key
+      - uses: actions/master
+      # Setup key
       - name: Setup key
         run: |
           set -eu
