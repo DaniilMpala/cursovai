@@ -7,7 +7,10 @@ import requests
 from pymongo import MongoClient
 from bs4 import BeautifulSoup
 from pymongo import ReturnDocument
-from functions import percentFromString, brandFromString, weightFromString, translateString, deleteAdd, weightFromStringMany,updateOption
+import os
+import sys
+sys.path.append(os.path.abspath('../globale'))
+from functions import percentFromString, brandFromString, weightFromString, translateString, deleteAdd, weightFromStringMany, updateOption
 client = MongoClient(
     'mongodb+srv://testSait:test123Q@cluster0.obuew.mongodb.net/myFirstDatabase?retryWrites=true&w=majority')
 db = client.catalog
@@ -60,29 +63,37 @@ def parserLenta():
             translate = False
             try:
                 r = requests.post("https://lenta.com/api/v1/skus/list",
-                                    headers={
-                                        "content-type": "application/json",
-                                        "user-agent": "node-fetch"
-                                    },
-                                    json={"nodeCode": cat, "filters": [], "typeSearch": 1,
+                                  headers={
+                                      "content-type": "application/json",
+                                      "user-agent": "node-fetch"
+                                  },
+                                  json={"nodeCode": cat, "filters": [], "typeSearch": 1,
                                         "sortingType": "ByCardPriceAsc", "offset": offsetLast, "limit": 24, "updateFilters": True},
-                                    )
+                                  )
             except (TimeoutError, json.decoder.JSONDecodeError):
                 print("Ошибка TimeoutError или json.decoder.JSONDecodeError")
                 r.status_code = 500
 
-            totalCount = r.json()["totalCount"]
-            print(r.status_code, totalCount, offsetLast)
+            status_code = r.status_code
+            r = r.json()
 
-            if r.status_code != 200 or r.json()["totalCount"] == 0:
+            if not "totalCount" in r:
+                offsetLast += 25
+                continue
+
+            totalCount = r["totalCount"]
+            print(status_code, totalCount, offsetLast)
+
+            if status_code != 200 or r["totalCount"] == 0:
                 time.sleep(3)
                 continue
-            if totalCount <= offsetLast or len(r.json()["skus"]) == 0:
+            if totalCount <= offsetLast or len(r["skus"]) == 0:
                 break
-            
-            print("Всего ", totalCount, "В разделе твоаров: ",len(r.json()["skus"]))
 
-            for v in r.json()["skus"]:
+            print("Всего ", totalCount, "В разделе твоаров: ",
+                  len(r["skus"]))
+
+            for v in r["skus"]:
                 # переводим все в русские символы
                 v['title'] = re.sub('\s*\-\s*', '-', v["title"])
 
@@ -100,42 +111,41 @@ def parserLenta():
                 for i in range(len(weightSymbol[0])):
                     if weightSymbol[0][i]:
                         try:
-                            # v['title'] = v['title'].replace(title[0], "").strip()
                             decimal = weightSymbol[0][i]
                             symbol = weightSymbol[1]
                             valueSymbol = v["cardPrice"]["value"] / decimal
-                            # if(weightSymbol[2] == "пак" or weightSymbol[2] == "шт"):
-                            #     valueSymbol = v["cardPrice"]["value"] / decimal
-                            # else:
-                            #     valueSymbol = v["cardPrice"]["value"] * 1000 / \
-                            #         decimal if weightSymbol[2] == "гр" or weightSymbol[2] == "мл" or weightSymbol[2] == "г" else v[
-                            #             "cardPrice"]["value"] / decimal
                         except:
                             print(v['title'], decimal, symbol, weightSymbol[0])
                             break
 
-                    
-
                     brand = brandFromString(v["title"])
 
                     brandSearch = translateString(brandFromString(v["title"]))
-                    
-                    if brandSearch == "":
-                        d = Brand.find_one({"$text": {"$search": v['title']}}, {"score": {
-                                                    "$meta": "textScore"}}, sort=[("score", {"$meta": "textScore"})]) or {"score": 0}
-                        if d["score"] >= 1:
-                            brandSearch = d["title"]
+                    if brandSearch != "" and not brandSearch.isnumeric():
+                        d = Brand.find_one({"$text": {"$search": translateString(v['title'])}},
+                                           {"score": {"$meta": "textScore"}},
+                                           sort=[
+                                               ("score", {"$meta": "textScore"})]
+                                           ) or {"score": 0}
+                    else:
+                        d = {"score": 0}
 
-                    if(Brand.find_one({"title": {"$regex": brandSearch, "$options": "i"}}) == None and brandSearch != ""):
+                    print(brandSearch, d["score"], brandSearch != "")
+                    if d["score"] >= 1:
+                        brandSearch = d["value"]
+                    elif brandSearch != "":
                         Brand.insert_one({
-                            "title": brandSearch,
+                            "value": brandSearch,
+                            "label": brand,
                             "categoryFull": v["gaCategory"],
                             "categoryShort": v["gaCategory"].split("/")[1]
                         })
 
-                    d = Catalog.find_one({"shops.tovar.description": v["title"]})
 
-                    #Если ласт символ не буква удалить
+                    d = Catalog.find_one(
+                        {"shops.tovar.description": v["title"]})
+
+                    # Если ласт символ не буква удалить
                     # if len(re.findall("[^a-zA-ZА-Я]", v["title"][-1])) > 0:
                     #     v["title"] = v["title"][:-1].strip()
                     infoProduct = {
@@ -158,19 +168,21 @@ def parserLenta():
                             "availabilityShop": None
                         }}
 
-                    print(f'Бренд: {brand} ({brandSearch}) | %: {percentFromString(v["title"])} | вес и symbol: {decimal} {symbol} | Полный текст: {v["title"]}')
+                    print(
+                        f'Бренд: {brand} ({brandSearch}) | %: {percentFromString(v["title"])[1]} | вес и symbol: {decimal} {symbol} | Полный текст: {v["title"]}')
 
                     if d == None:
                         Catalog.insert_one({
                             "countBuyMonth": 0,
-                            "searchText": v["title"] + " " + v["gaCategory"].replace("/", " ") + deleteAdd(translateString(v["title"]), v["title"]),#Русский перевод добавляется
+                            # Русский перевод добавляется
+                            "searchText": v["title"] + " " + v["gaCategory"].replace("/", " ") + " " + deleteAdd(translateString(v["title"]), v["title"]),
                             "titleProduct": v["gaCategory"].split("/")[2],
                             "categoryFull": v["gaCategory"],
                             "categoryShort": v["gaCategory"].split("/")[1],
                             "brandSearch": brandSearch,
                             "brand": brand if brand != "" else brandSearch,
                             "weight": decimal,
-                            "percent": percentFromString(v["title"]),
+                            "percent": percentFromString(v["title"])[1],
                             "symbol": symbol,
                             "shops": [infoProduct]
                         })
@@ -192,10 +204,10 @@ def parserLenta():
                             "$set": {"shops": d["shops"]}
                         })
 
-                    #Обновим фильтр
+                    # Обновим фильтр
                     updateOption()
                     ####################
-            offsetLast += len(r.json()["skus"])
+            offsetLast += len(r["skus"])
 
             print(totalCount, offsetLast)
 

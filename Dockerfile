@@ -4,7 +4,7 @@ ENV PYTHONUNBUFFERED 1
 
 WORKDIR .
 
-ADD ./discountsite .
+ADD ./ .
 
 RUN pip install --upgrade pip && pip install -r requirements.txt
 

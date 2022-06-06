@@ -1,5 +1,6 @@
 {
     "python.analysis.extraPaths": [
-        "./parser"
+        "./parser",
+        "./global"
     ]
 }

@@ -7,6 +7,9 @@ from bs4 import BeautifulSoup
 from pymongo import ReturnDocument
 from bson.objectid import ObjectId
 from datetime import datetime
+import os
+import sys
+sys.path.append(os.path.abspath('../globale'))
 from functions import percentFromString, brandFromString, weightFromString, translateString, deleteAdd, similarity, similarityText, CursorIntoList, weightFromStringMany, updateOption
 from bson.objectid import ObjectId
 client = MongoClient(
@@ -17,10 +20,7 @@ Shops = db["ShopsName"].find_one({"title": "Дикси"})
 Brand = db["Brand"]
 
 
-
-def parserDixy():
-    maxLen = 0
-
+def oldItem():
     for obj in CursorIntoList(Catalog.find({"shops.Shop.title": "Дикси"})):
         tmp = []
         searchTextDel = ""
@@ -31,20 +31,22 @@ def parserDixy():
                 searchTextDel = shop['tovar']['description']
         if len(tmp) > -1:
             d = Catalog.update_one({
-                    "_id": ObjectId(obj["_id"])
-                }, {
-                    "$set": {"shops": tmp, "searchText": obj["searchText"].replace(searchTextDel, "")}
+                "_id": ObjectId(obj["_id"])
+            }, {
+                "$set": {"shops": tmp, "searchText": obj["searchText"].replace(searchTextDel, "")}
             })
         else:
             d = Catalog.delete_one({
-                    "_id": ObjectId(obj["_id"])
-                })
+                "_id": ObjectId(obj["_id"])
+            })
         print("удалеяем дикси", obj["_id"],)
 
 
+def parserDixy():
+    maxLen = 0
 
-    for i in range(1, 50):
-        r = requests.post("https://dixy.ru/catalog/?PAGEN_1="+str(i),
+    for j in range(1, 50):
+        r = requests.post("https://dixy.ru/catalog/?PAGEN_1="+str(j),
                           headers={
             "content-type": "application/json",
                             "user-agent": "node-fetch"
@@ -74,20 +76,21 @@ def parserDixy():
             price = float(
                 f'{block.select("div.dixyCatalogItemPrice__new")[0].text.strip()}.{block.select("div.dixyCatalogItemPrice__kopeck")[0].text.strip()}')
             promoPercent = block.select("div.dixyCatalogItemPrice__discount")[
-                0].text.strip().replace("-", "").replace("%", "")
+                0].text.replace("-", "").replace("%", "").strip()
+
             promoEnd = datetime.strptime(block.select("div.dixyCatalogItem__term")[
                                          0].text.strip().split("-")[1].strip(), "%d.%m.%Y")
             promoStart = datetime.strptime(block.select("div.dixyCatalogItem__term")[
                                            0].text.strip().split("-")[0].strip(), "%d.%m.%Y")
 
-            weightSymbol = weightFromStringMany(title) 
+            weightSymbol = weightFromStringMany(title)
             if not weightSymbol:
                 weightSymbol = [[None]]
 
             decimal = None
             symbol = None
             valueSymbol = None
-            
+
             for i in range(len(weightSymbol[0])):
                 if weightSymbol[0][i]:
                     decimal = weightSymbol[0][i]
@@ -116,20 +119,22 @@ def parserDixy():
                         "availabilityShop": None,
                     }}
                 d = Brand.find_one({"$text": {"$search": translateString(title)}}, {
-                                "score": {"$meta": "textScore"}}, sort=[("score", {"$meta": "textScore"})])
-                
-                percent = percentFromString(title)
+                    "score": {"$meta": "textScore"}}, sort=[("score", {"$meta": "textScore"})])
+
+                percent = percentFromString(title)[1]
                 if d != None:
                     if d["score"] >= 1:
                         brand = d
-                        query = {"$text": {"$search": title}, "brand": {"$regex": d["title"]}}  # regex ДОБАВИЛ!
+                        query = {"$text": {"$search": title}, "brand": {
+                            "$regex": brand["value"]}}  # regex ДОБАВИЛ!
                         if weightSymbol:
                             query.update({"weight": decimal})
                         if percent:
                             query.update({"percent": percent})
-                        
-                        #Поиск схожего 
-                        d = Catalog.find_one(query, {"score": {"$meta": "textScore"}}, sort=[("score", {"$meta": "textScore"})])
+
+                        # Поиск схожего
+                        d = Catalog.find_one(query, {"score": {"$meta": "textScore"}}, sort=[
+                                             ("score", {"$meta": "textScore"})])
                         if d != None:
                             # 3 условия совпадение товаров
                             # 1 - по score 2.5 +
@@ -143,7 +148,8 @@ def parserDixy():
                                     okeySimilarityText = True
                                     break
                             if d["score"] >= 2.5 or okeySimilarityText:
-                                print(f'{d["score"]}    weight: {decimal} {symbol}, percent: {percent} | {title} ')
+                                print(
+                                    f'{d["score"]}    weight: {decimal} {symbol}, percent: {percent} | {title} ')
                                 # Добавляем к найденному товар
 
                                 finded = False
@@ -157,21 +163,25 @@ def parserDixy():
                                         if d["shops"][i]["Shop"]["title"] == "Дикси":
                                             continue
 
-                                        v1 = similarity(title,  d["shops"][i]["tovar"]["description"])[0]
-                                        v2 = similarity(d["shops"][i]["tovar"]["description"],  title)[0]
+                                        v1 = similarity(
+                                            title,  d["shops"][i]["tovar"]["description"])[0]
+                                        v2 = similarity(
+                                            d["shops"][i]["tovar"]["description"],  title)[0]
                                         if maximum < v2:
                                             maximum = v2
                                         if maximum < v1:
                                             maximum = v1
-                                    print(f'Схожесть нового товара с товаром из других магазов: {maximum}  | {title}')
+                                    print(
+                                        f'Схожесть нового товара с товаром из других магазов: {maximum}  | {title}')
 
-                                
                                     for i in range(len(d["shops"])):
                                         if d["shops"][i]["Shop"]["title"] == "Дикси":
                                             continue
 
-                                        v1 = similarity(finded,  d["shops"][i]["tovar"]["description"])[0]
-                                        v2 = similarity(d["shops"][i]["tovar"]["description"],  finded)[0]
+                                        v1 = similarity(
+                                            finded,  d["shops"][i]["tovar"]["description"])[0]
+                                        v2 = similarity(
+                                            d["shops"][i]["tovar"]["description"],  finded)[0]
                                         if maximum2 < v2:
                                             maximum2 = v2
                                         if maximum2 < v1:
@@ -180,15 +190,17 @@ def parserDixy():
                                     if maximum > maximum2:
                                         for i in range(len(d["shops"])):
                                             if d["shops"][i]["Shop"]["title"] == "Дикси":
-                                                d["shops"][i] = infoProduct 
-                                    
-                                    print(f'Схожесть старого товара с товаром из других магазов: {maximum2} | {finded}')
+                                                d["shops"][i] = infoProduct
+
+                                    print(
+                                        f'Схожесть старого товара с товаром из других магазов: {maximum2} | {finded}')
 
                                 else:
                                     print("append", d["searchText"])
                                     d["shops"].append(infoProduct)
 
-                                d["shops"] = list(sorted(d["shops"], key=lambda x: x["tovar"]["value"]))
+                                d["shops"] = list(
+                                    sorted(d["shops"], key=lambda x: x["tovar"]["value"]))
 
                                 Catalog.update_one({
                                     "_id": d["_id"]
@@ -196,7 +208,8 @@ def parserDixy():
                                     "$set": {"shops": d["shops"], "searchText": d["searchText"]+" "+(title if d["searchText"].find(title) > -1 else "")}
                                 })
                             else:
-                                print(f'НОВЫЙ {d["score"]} - weight: {decimal} {symbol}, percent: {percent} | {title} ')
+                                print(
+                                    f'НОВЫЙ {d["score"]} - weight: {decimal} {symbol}, percent: {percent} | {title} ')
                                 # Если есть бренд но нету товара
                                 Catalog.insert_one({
                                     "countBuyMonth": 0,
@@ -205,15 +218,16 @@ def parserDixy():
                                     "titleProduct": brand["categoryFull"].split("/")[2],
                                     "categoryFull": brand["categoryFull"],
                                     "categoryShort": brand["categoryShort"],
-                                    "brandSearch": translateString(brand["title"]),
-                                    "brand": brand["title"],
+                                    "brandSearch": brand["value"],
+                                    "brand": brand["label"],
                                     "weight": decimal,
-                                    "percent": percentFromString(title),
+                                    "percent": percentFromString(title)[1],
                                     "symbol": symbol,
                                     "shops": [infoProduct]
                                 })
                         else:
-                            print(f'НОВЫЙ - weight: {decimal} {symbol}, percent: {percent} | {title} ')
+                            print(
+                                f'НОВЫЙ - weight: {decimal} {symbol}, percent: {percent} | {title} ')
                             # Если есть бренд но нету товара
                             Catalog.insert_one({
                                 "countBuyMonth": 0,
@@ -222,24 +236,27 @@ def parserDixy():
                                 "titleProduct": brand["categoryFull"].split("/")[2],
                                 "categoryFull": brand["categoryFull"],
                                 "categoryShort": brand["categoryShort"],
-                                "brandSearch": translateString(brand["title"]),
-                                "brand": brand["title"],
+                                "brandSearch": brand["value"],
+                                "brand": brand["label"],
                                 "weight": decimal,
-                                "percent": percentFromString(title),
+                                "percent": percentFromString(title)[1],
                                 "symbol": symbol,
                                 "shops": [infoProduct]
                             })
-                            pass
+                    else:
+                        # Score у бренда < 1
+                        pass
                 else:
+                    # Нету бренду
                     pass
-                
-                #Обновим фильтр
+
+                # Обновим фильтр
                 updateOption()
                 ####################
-        print(i, "|", len(html.findAll("div", {"class": "item"})))
         if maxLen > len(html.findAll("div", {"class": "item"})):
-            print("Товары закончились на странице: ", i)
+            print("Товары закончились на странице: ", j)
             break
+    print(j + " / " + 50)
 
 
 # while True:

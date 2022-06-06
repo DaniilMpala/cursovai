@@ -4,6 +4,9 @@ from . import views
 
 urlpatterns = [
     path('/getAllProduct', views.getAllProduct),
-    # path('/getCategory', views.getCategory),
+    path('/getChoiceBuyers', views.getChoiceBuyers),
     path('/getOptionsFilter', views.getOptionsFilter),
+    path('/updateDemandItem', views.updateDemandItem),
+
+    path('/makeFavorite', views.makeFavorite),
 ]
