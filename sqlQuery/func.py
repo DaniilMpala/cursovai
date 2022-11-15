@@ -1,58 +1,101 @@
-from .models import *
-from django.db import connection
+# from .models import *
+# from django.db import connection
+import sqlite3
+from datetime import datetime
 
 def addStudent(fullName, course, group):
-    student = Student(fullName=fullName, course=course, group=group)
-    student.save()
-    return student
+    con = sqlite3.connect("db.sqlite3")#представляет собой соединение с базой данных на диске.
+    con.row_factory = sqlite3.Row
+    cur = con.cursor()
+
+    cur.execute('INSERT INTO student ("fullName", "course", "group") VALUES (?,?,?) RETURNING *',(fullName, course, group))
+    row = cur.fetchone()
+
+    cur.close()
+    con.commit()
+
+    return dict(row)
 
 def getStudent(fullName, course, group):
-    try:
-        student = Student.objects.filter( fullName__icontains=fullName) & Student.objects.filter( course__icontains=course) & Student.objects.filter( group__icontains=group)
-    except Student.DoesNotExist:
-        student = None
-    return student
+    con = sqlite3.connect("db.sqlite3")#представляет собой соединение с базой данных на диске.
+    con.row_factory = sqlite3.Row 
+    cur = con.cursor()
+
+    cur.execute('''SELECT * FROM student WHERE "fullName" LIKE ? AND "course" LIKE ? AND "group" LIKE ? ''',(f"%{fullName}%", f"%{course}%", f"%{group}%"))
+    row = cur.fetchall()
+
+    cur.close()
+    con.commit()
+
+    row = [dict(twmpRow) for twmpRow in row]
+
+    return row
 
 def addCompletedWork(idStudent, idPracticalWork):
-    work = CompletedWork(idStudent=idStudent,idPracticalWork=idPracticalWork )
-    work.save()
-    return work
+    con = sqlite3.connect("db.sqlite3")#представляет собой соединение с базой данных на диске.
+    con.row_factory = sqlite3.Row
+    cur = con.cursor()
 
-def dictfetchall(cursor):
-    "Return all rows from a cursor as a dict"
-    columns = [col[0] for col in cursor.description]
-    return [
-        dict(zip(columns, row))
-        for row in cursor.fetchall()
-    ]
+    cur.execute('INSERT INTO completedwork ("idStudent", "idPracticalWork", "date") VALUES (?,?,?) RETURNING *',(idStudent, idPracticalWork, datetime.now()))
+    row = cur.fetchone()
+
+    cur.close()
+    con.commit()
+
+    return dict(row)
+
 
 def getCompletedWork(idStudent):
-    cur = connection.cursor()
-    cur.execute(f'''
-    SELECT
-        date,
-        fullName,
-        course,
-        "group",
-        subject,
-        title
-    FROM sqlQuery_completedwork
-    LEFT JOIN sqlQuery_practicalwork ON sqlQuery_practicalwork.id = sqlQuery_completedwork.idPracticalWork      
-	LEFT JOIN sqlQuery_student ON sqlQuery_student.id = sqlQuery_completedwork.idStudent      
-    WHERE idStudent = {idStudent}
-    ''')
-    works = dictfetchall(cur)
-    print(works)
-    return works
+    con = sqlite3.connect("db.sqlite3")#представляет собой соединение с базой данных на диске.
+    con.row_factory = sqlite3.Row 
+    cur = con.cursor()
+
+    cur.execute('''
+        SELECT
+            date,
+            fullName,
+            course,
+            "group",
+            subject,
+            title
+        FROM completedwork
+        LEFT JOIN practicalwork ON practicalwork.id = completedwork.idPracticalWork      
+        LEFT JOIN student ON student.id = completedwork.idStudent      
+        WHERE idStudent = ?
+    ''',(idStudent))
+    row = cur.fetchall()
+
+    cur.close()
+    con.commit()
+
+    row = [dict(twmpRow) for twmpRow in row]
+
+    return row
 
 def addPracticalWork(title, subject):
-    work = PracticalWork(title=title,subject=subject )
-    work.save()
-    return work
+    con = sqlite3.connect("db.sqlite3")#представляет собой соединение с базой данных на диске.
+    con.row_factory = sqlite3.Row
+    cur = con.cursor()
+
+    cur.execute('INSERT INTO practicalwork ("title", "subject") VALUES (?,?) RETURNING *',(title, subject))
+    row = cur.fetchone()
+
+    cur.close()
+    con.commit()
+
+    return dict(row)
 
 def getPracticalWork(title, subject):
-    try:
-        works = PracticalWork.objects.filter( title__icontains=title) & PracticalWork.objects.filter( subject__icontains=subject)
-    except PracticalWork.DoesNotExist:
-        works = None
-    return works
+    con = sqlite3.connect("db.sqlite3")#представляет собой соединение с базой данных на диске.
+    con.row_factory = sqlite3.Row 
+    cur = con.cursor()
+
+    cur.execute('''SELECT * FROM practicalwork WHERE "title" LIKE ? AND "subject" LIKE ?''',(f"%{title}%", f"%{subject}%"))
+    row = cur.fetchall()
+
+    cur.close()
+    con.commit()
+
+    row = [dict(twmpRow) for twmpRow in row]
+
+    return row
