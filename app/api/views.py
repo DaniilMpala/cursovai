@@ -18,8 +18,11 @@ def queryAddStudent(request):
     if( 
         re.search("[a-zA-Zа-яА-Я ]*", request.data.get('fullName'))[0] != request.data.get('fullName') or
         re.search("[\d]*", request.data.get('course'))[0] != request.data.get('course') or
-        re.search("[a-zA-Zа-яА-Я \d-]*", request.data.get('group'))[0] != request.data.get('group')
-    ): return Response({'error':'Ошибка вводе параметра'})
+        re.search("[a-zA-Zа-яА-Я \d-]*", request.data.get('group'))[0] != request.data.get('group') or
+        request.data.get('fullName').lstrip() == "" or
+        request.data.get('course').lstrip() == "" or
+        request.data.get('group').lstrip() == ""
+    ): return Response({'error':'Ошибка при вводе параметра'})
 
     newStudent = addStudent(request.data.get('fullName'), request.data.get('course'), request.data.get('group'))
     studentSerializer = StudentSerializer(instance=newStudent)
@@ -38,7 +41,7 @@ def queryGetStudent(request):
         re.search("[a-zA-Zа-яА-Я ]*", request.query_params.get('fullName') or '')[0] != (request.query_params.get('fullName') or '') or
         re.search("[\d]*", request.query_params.get('course') or '')[0] != (request.query_params.get('course') or '') or
         re.search("[a-zA-Zа-яА-Я \d-]*", request.query_params.get('group') or '')[0] != (request.query_params.get('group') or '')
-    ): return Response({'error':'Ошибка вводе параметра'})
+    ): return Response({'error':'Ошибка при вводе параметра'})
     
     students = getStudent(request.query_params.get('fullName') or '', request.query_params.get('course') or '', request.query_params.get('group') or '')
 
@@ -59,9 +62,11 @@ def queryGetStudent(request):
 def queryAddPracticalWork(request):
     if( 
         re.search("[a-zA-Zа-яА-Я \-,.\d]*", request.data.get('title'))[0] != request.data.get('title') or
-        re.search("[a-zA-Zа-яА-Я \-,.\d]*", request.data.get('subject'))[0] != request.data.get('subject')
-    ): return Response({'error':'Ошибка вводе параметра'})
-
+        re.search("[a-zA-Zа-яА-Я \-,.\d]*", request.data.get('subject'))[0] != request.data.get('subject')or
+        request.data.get('title').lstrip() == "" or
+        request.data.get('subject').lstrip() == ""
+    ): return Response({'error':'Ошибка при вводе параметра'})
+    print(request.data.get('title'), request.data.get('subject'))
     newStudent = addPracticalWork(request.data.get('title'), request.data.get('subject'))
     workSerializer = PracticalWorkSerializer(instance=newStudent)
     return Response(workSerializer.data)
@@ -77,7 +82,7 @@ def queryGetPracticalWork(request):
     if( 
         re.search("[a-zA-Zа-яА-Я \-,.\d]*", request.query_params.get('title') or '')[0] != (request.query_params.get('title') or '') or
         re.search("[a-zA-Zа-яА-Я \-,.\d]*", request.query_params.get('subject') or '')[0] != (request.query_params.get('subject') or '')
-    ): return Response({'error':'Ошибка вводе параметра'})
+    ): return Response({'error':'Ошибка при вводе параметра'})
 
     works = getPracticalWork(request.query_params.get('title') or '', request.query_params.get('subject') or '')
 
@@ -98,10 +103,17 @@ def queryGetPracticalWork(request):
 def queryAddCompletedWork(request):
     if( 
         re.search("[\d]*", request.data.get('idStudent'))[0] != request.data.get('idStudent') or
-        re.search("[\d]*", request.data.get('idPracticalWork'))[0] != request.data.get('idPracticalWork')
-    ): return Response({'error':'Ошибка вводе параметра'})
+        re.search("[\d]*", request.data.get('idPracticalWork'))[0] != request.data.get('idPracticalWork')or
+        request.data.get('idStudent').lstrip() == "" or
+        request.data.get('idPracticalWork').lstrip() == ""
+    ): return Response({'error':'Ошибка при вводе параметра'})
+
 
     work = addCompletedWork(request.data.get('idStudent'), request.data.get('idPracticalWork'))
+
+    if 'error' in work:
+        return Response(work)
+
     workSerializer = AddCompletedWorkSerializer(instance=work)
     return Response(workSerializer.data)
 
@@ -114,14 +126,14 @@ def queryAddCompletedWork(request):
 def queryGetCompletedWork(request):
     if( 
         re.search("[\d]*", request.query_params.get('idStudent') or '')[0] != (request.query_params.get('idStudent') or '')
-    ): return Response({'error':'Ошибка вводе параметра'})
+    ): return Response({'error':'Ошибка при вводе параметра'})
 
-    works = getCompletedWork(request.query_params.get('idStudent') or '')
+    works = getCompletedWork(request.query_params.get('idStudent') or 0)
 
-    print(works)
     if(works is None):
         return Response([])
 
     worksSerializer = (CompletedWorkSerializer(instance=st).data for st in works) if works is not None else []
+    countWorks = {"count": len(works)}
 
-    return Response(worksSerializer)
+    return Response([countWorks,worksSerializer])

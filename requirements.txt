@@ -1,4 +1,0 @@
-django
-djangorestframework==3.14.0
-drf-spectacular==0.24.2
-pillow

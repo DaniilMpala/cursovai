@@ -1,7 +1,7 @@
 # Dockerfile
 
 # Загружаем пайтен такой-то версии
-FROM python:3.9
+FROM python:3.11
 
 # Копируем файл с зависимости в рабочую директорию образа
 COPY app/requirements.txt requirements.txt

@@ -1,13 +1,13 @@
 # from .models import *
 # from django.db import connection
-import sqlite3
+import pysqlite3
 from datetime import datetime
-
+import django
 def addStudent(fullName, course, group):
-    con = sqlite3.connect("db.sqlite3")#представляет собой соединение с базой данных на диске.
-    con.row_factory = sqlite3.Row
+    con = pysqlite3.connect("db.sqlite3")#представляет собой соединение с базой данных на диске.
+    con.row_factory = pysqlite3.Row
     cur = con.cursor()
-
+    print(pysqlite3.sqlite_version, django.VERSION)
     cur.execute('INSERT INTO student ("fullName", "course", "group") VALUES (?,?,?) RETURNING *',(fullName, course, group))
     row = cur.fetchone()
 
@@ -17,8 +17,8 @@ def addStudent(fullName, course, group):
     return dict(row)
 
 def getStudent(fullName, course, group):
-    con = sqlite3.connect("db.sqlite3")#представляет собой соединение с базой данных на диске.
-    con.row_factory = sqlite3.Row 
+    con = pysqlite3.connect("db.sqlite3")#представляет собой соединение с базой данных на диске.
+    con.row_factory = pysqlite3.Row 
     cur = con.cursor()
 
     cur.execute('''SELECT * FROM student WHERE "fullName" LIKE ? AND "course" LIKE ? AND "group" LIKE ? ''',(f"%{fullName}%", f"%{course}%", f"%{group}%"))
@@ -32,9 +32,20 @@ def getStudent(fullName, course, group):
     return row
 
 def addCompletedWork(idStudent, idPracticalWork):
-    con = sqlite3.connect("db.sqlite3")#представляет собой соединение с базой данных на диске.
-    con.row_factory = sqlite3.Row
+    con = pysqlite3.connect("db.sqlite3")#представляет собой соединение с базой данных на диске.
+    con.row_factory = pysqlite3.Row
     cur = con.cursor()
+
+# ругается без запятой в конце
+    cur.execute('SELECT fullName FROM student WHERE id = ?', (idStudent,))
+    code, = cur.fetchone() or (None,)
+    if code is None:
+        return {'error':'Такого студента не существует'}
+
+    cur.execute('SELECT title FROM practicalwork WHERE id = ?', (idPracticalWork,))
+    code, = cur.fetchone() or (None,)
+    if code is None:
+        return {'error':'Такой работы существует'}
 
     cur.execute('INSERT INTO completedwork ("idStudent", "idPracticalWork", "date") VALUES (?,?,?) RETURNING *',(idStudent, idPracticalWork, datetime.now()))
     row = cur.fetchone()
@@ -46,11 +57,11 @@ def addCompletedWork(idStudent, idPracticalWork):
 
 
 def getCompletedWork(idStudent):
-    con = sqlite3.connect("db.sqlite3")#представляет собой соединение с базой данных на диске.
-    con.row_factory = sqlite3.Row 
+    con = pysqlite3.connect("db.sqlite3")#представляет собой соединение с базой данных на диске.
+    con.row_factory = pysqlite3.Row 
     cur = con.cursor()
 
-    cur.execute('''
+    cur.execute(f"""
         SELECT
             date,
             fullName,
@@ -60,9 +71,9 @@ def getCompletedWork(idStudent):
             title
         FROM completedwork
         LEFT JOIN practicalwork ON practicalwork.id = completedwork.idPracticalWork      
-        LEFT JOIN student ON student.id = completedwork.idStudent      
-        WHERE idStudent = ?
-    ''',(idStudent))
+        LEFT JOIN student ON student.id = completedwork.idStudent  
+        {f"WHERE idStudent = {int(idStudent)}" if int(idStudent) > 0 else ""}    
+    """)
     row = cur.fetchall()
 
     cur.close()
@@ -73,8 +84,8 @@ def getCompletedWork(idStudent):
     return row
 
 def addPracticalWork(title, subject):
-    con = sqlite3.connect("db.sqlite3")#представляет собой соединение с базой данных на диске.
-    con.row_factory = sqlite3.Row
+    con = pysqlite3.connect("db.sqlite3")#представляет собой соединение с базой данных на диске.
+    con.row_factory = pysqlite3.Row
     cur = con.cursor()
 
     cur.execute('INSERT INTO practicalwork ("title", "subject") VALUES (?,?) RETURNING *',(title, subject))
@@ -86,8 +97,8 @@ def addPracticalWork(title, subject):
     return dict(row)
 
 def getPracticalWork(title, subject):
-    con = sqlite3.connect("db.sqlite3")#представляет собой соединение с базой данных на диске.
-    con.row_factory = sqlite3.Row 
+    con = pysqlite3.connect("db.sqlite3")#представляет собой соединение с базой данных на диске.
+    con.row_factory = pysqlite3.Row 
     cur = con.cursor()
 
     cur.execute('''SELECT * FROM practicalwork WHERE "title" LIKE ? AND "subject" LIKE ?''',(f"%{title}%", f"%{subject}%"))
