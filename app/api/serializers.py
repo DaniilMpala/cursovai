@@ -6,6 +6,7 @@ class StudentSerializer(serializers.Serializer):
     course = serializers.IntegerField()
     group = serializers.CharField()
     
+
 class PracticalWorkSerializer(serializers.Serializer):
     id = serializers.IntegerField()
     title = serializers.CharField()
@@ -18,7 +19,10 @@ class CompletedWorkSerializer(serializers.Serializer):
     group = serializers.CharField()
     subject = serializers.CharField()
     title = serializers.CharField()
+class CountCompletedWorkSerializer(serializers.Serializer):
+    count = serializers.IntegerField()
 
+    
 class AddCompletedWorkSerializer(serializers.Serializer):
     id = serializers.IntegerField()
     idStudent = serializers.IntegerField()

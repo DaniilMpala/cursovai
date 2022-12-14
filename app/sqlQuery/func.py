@@ -17,6 +17,7 @@ def addStudent(fullName, course, group):
     return dict(row)
 
 def getStudent(fullName, course, group):
+    print(fullName, course, group)
     con = pysqlite3.connect("db.sqlite3")#представляет собой соединение с базой данных на диске.
     con.row_factory = pysqlite3.Row 
     cur = con.cursor()
@@ -28,7 +29,7 @@ def getStudent(fullName, course, group):
     con.commit()
 
     row = [dict(twmpRow) for twmpRow in row]
-
+    print(row)
     return row
 
 def addCompletedWork(idStudent, idPracticalWork):
@@ -73,6 +74,7 @@ def getCompletedWork(idStudent):
         LEFT JOIN practicalwork ON practicalwork.id = completedwork.idPracticalWork      
         LEFT JOIN student ON student.id = completedwork.idStudent  
         {f"WHERE idStudent = {int(idStudent)}" if int(idStudent) > 0 else ""}    
+        
     """)
     row = cur.fetchall()
 

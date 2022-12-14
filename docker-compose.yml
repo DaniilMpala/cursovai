@@ -34,7 +34,7 @@ services:
     environment:
       - .env
     ports:
-      - "80:80"
+      - "82:80"
     depends_on:
       - app_server
       - nginx_server
